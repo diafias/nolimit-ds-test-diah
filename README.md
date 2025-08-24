@@ -33,8 +33,8 @@ Dokumen PDF yang digunakan sebagai sumber pengetahuan:
 
 1. **Clone Repository**
 ```
-git clone https://github.com/<username>/nolimit-ds-test-<name>.git
-cd nolimit-ds-test-<name>
+git clone https://github.com/diafias/nolimit-ds-test-diah.git
+cd nolimit-ds-test-diah
 ```
 2. **Buat Virtual Environment**
 ```
