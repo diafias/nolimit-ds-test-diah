@@ -4,22 +4,22 @@ import numpy as np
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 from sentence_transformers import SentenceTransformer
 
-with open(r"D:\nolimit-ds-test\index\metadata.pkl", "rb") as f:
+with open(r"D:\nolimit-ds-test-diah\index\metadata.pkl", "rb") as f:
     metadata = pickle.load(f)
 
-index = faiss.read_index(r"D:\nolimit-ds-test\index\docs.index")
+index = faiss.read_index(r"D:\nolimit-ds-test-diah\index\docs.index")
 
 embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 # =========================
 # Load LLM (google/flan-t5-base)
 # =========================
-model_name = "google/flan-t5-base"
+model_name = "google/flan-t5-large"
 tokenizer = AutoTokenizer.from_pretrained(model_name, model_max_length=512, truncation=True)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 generator = pipeline("text2text-generation", model=model, tokenizer=tokenizer, device=-1)  # device=-1 = CPU
 
-def retrieve(query, top_k=3):
+def retrieve(query, top_k=2):
     # Encode query
     query_vec = embedder.encode([query], convert_to_numpy=True)
     # Search FAISS
@@ -28,7 +28,7 @@ def retrieve(query, top_k=3):
     docs = [metadata[i] for i in I[0]]
     return docs
 
-def rag_chat(query, top_k=3, max_new_tokens=256):
+def rag_chat(query, top_k=2, max_new_tokens=256):
     # Step 1: Retrieve documents
     docs = retrieve(query, top_k=top_k)
 
@@ -36,15 +36,17 @@ def rag_chat(query, top_k=3, max_new_tokens=256):
     context = "\n".join([doc['text'] for doc in docs])
 
     # Step 2: Prompt ke LLM
-    prompt = f"""Gunakan informasi berikut untuk menjawab pertanyaan:
+    prompt = f"""
+    Gunakan hanya informasi berikut untuk menjawab pertanyaan. Jangan menambahkan informasi lain. 
+    Jawaban harus jelas, singkat, dan relevan.
 
-Konteks:
-{context}
+    Konteks:
+    {context}
 
-Pertanyaan:
-{query}
+    Pertanyaan:
+    {query}
 
-Jawaban:"""
+    Jawaban:"""
 
     result = generator(
         prompt,
@@ -56,6 +58,10 @@ Jawaban:"""
 
 if __name__ == "__main__":
     print("RAG Chatbot siap! (ketik 'exit' atau 'quit' untuk berhenti)")
+    
+    # File untuk menyimpan histori
+    history_file = r"D:\nolimit-ds-test-diah\chat_history.txt"
+
     while True:
         q = input("User: ")
         if q.lower() in ["exit", "quit", "q"]:
@@ -63,5 +69,13 @@ if __name__ == "__main__":
         try:
             answer = rag_chat(q)
             print("Bot:", answer)
+
+            # Simpan ke file
+            with open(history_file, "a", encoding="utf-8") as f:
+                f.write(f"User: {q}\n")
+                f.write(f"Bot: {answer}\n")
+                f.write("-" * 50 + "\n")  # separator antar pertanyaan
+
         except Exception as e:
             print("Terjadi error:", e)
+
